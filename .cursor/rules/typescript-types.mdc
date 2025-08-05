@@ -1,0 +1,734 @@
+# TypeScript 类型定义规则
+
+## 类型文件组织
+
+基于 [src/types/](mdc:src/types/) 目录的类型定义组织。
+
+### 目录结构
+
+```
+src/types/
+├── api.d.ts          # API 接口类型
+├── common.d.ts       # 通用类型定义
+├── components.d.ts   # 组件类型（自动生成）
+├── auto-import.d.ts  # 自动导入类型（自动生成）
+├── uni-pages.d.ts    # 页面路由类型（自动生成）
+├── store.d.ts        # Store 状态类型
+├── utils.d.ts        # 工具函数类型
+└── global.d.ts       # 全局类型声明
+```
+
+## 全局类型定义
+
+### 基础响应类型
+
+```typescript
+// src/types/global.d.ts
+
+declare global {
+  /** 通用响应数据结构 */
+  interface IResData<T = any> {
+    code: number
+    message: string
+    data: T
+    success?: boolean
+    timestamp?: number
+  }
+
+  /** 分页响应数据结构 */
+  interface IPaginationData<T = any> {
+    list: T[]
+    total: number
+    page: number
+    size: number
+    hasMore?: boolean
+  }
+
+  /** 用户信息类型 */
+  interface IUserInfo {
+    id: string | number
+    username: string
+    nickname?: string
+    avatar?: string
+    email?: string
+    phone?: string
+    token?: string
+    role?: string
+    permissions?: string[]
+    createTime?: string
+    updateTime?: string
+  }
+
+  /** 上传文件参数类型 */
+  interface IUniUploadFileOptions {
+    url: string
+    filePath?: string
+    name?: string
+    formData?: Record<string, any>
+    header?: Record<string, string>
+  }
+
+  /** 环境变量类型 */
+  interface ImportMetaEnv {
+    readonly VITE_APP_TITLE: string
+    readonly VITE_APP_PORT: number
+    readonly VITE_SERVER_BASEURL: string
+    readonly VITE_DELETE_CONSOLE: string
+    readonly DEV: boolean
+    readonly PROD: boolean
+    readonly MODE: 'development' | 'test' | 'production'
+  }
+}
+
+export {}
+```
+
+### 页面路由类型
+
+```typescript
+// src/types/router.d.ts
+
+/** 页面路由信息 */
+interface IPageRoute {
+  path: string
+  style?: {
+    navigationBarTitleText?: string
+    navigationStyle?: 'default' | 'custom'
+    backgroundColor?: string
+    [key: string]: any
+  }
+  needLogin?: boolean
+  meta?: Record<string, any>
+}
+
+/** 路由跳转参数 */
+interface INavigateOptions {
+  url: string
+  animationType?:
+    | 'pop-in'
+    | 'fade-in'
+    | 'slide-in-right'
+    | 'slide-in-left'
+    | 'slide-in-top'
+    | 'slide-in-bottom'
+    | 'none'
+  animationDuration?: number
+  events?: Record<string, Function>
+  success?: (result: any) => void
+  fail?: (error: any) => void
+  complete?: () => void
+}
+
+/** TabBar 配置类型 */
+interface ITabBarConfig {
+  color: string
+  selectedColor: string
+  backgroundColor: string
+  list: Array<{
+    pagePath: string
+    text: string
+    iconPath: string
+    selectedIconPath: string
+  }>
+}
+```
+
+## API 类型定义
+
+### 请求类型规范
+
+```typescript
+// src/types/api.d.ts
+
+namespace API {
+  /** 用户相关接口 */
+  namespace User {
+    interface LoginRequest {
+      username: string
+      password: string
+      captcha?: string
+    }
+
+    interface LoginResponse {
+      token: string
+      userInfo: IUserInfo
+      expireTime: number
+    }
+
+    interface RegisterRequest {
+      username: string
+      password: string
+      confirmPassword: string
+      email?: string
+      phone?: string
+      captcha: string
+    }
+
+    interface UpdateProfileRequest {
+      nickname?: string
+      avatar?: string
+      email?: string
+      phone?: string
+    }
+  }
+
+  /** 文件上传相关 */
+  namespace Upload {
+    interface UploadRequest {
+      file: File | string
+      type: 'image' | 'video' | 'document'
+      folder?: string
+    }
+
+    interface UploadResponse {
+      url: string
+      filename: string
+      size: number
+      type: string
+      hash?: string
+    }
+  }
+
+  /** 通用列表查询 */
+  interface ListRequest {
+    page?: number
+    size?: number
+    keyword?: string
+    sortField?: string
+    sortOrder?: 'asc' | 'desc'
+    filters?: Record<string, any>
+  }
+
+  interface ListResponse<T = any> extends IPaginationData<T> {
+    filters?: Record<string, any>
+    sorts?: Record<string, string>
+  }
+}
+```
+
+### HTTP 请求类型
+
+```typescript
+// src/types/http.d.ts
+
+/** HTTP 请求方法 */
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+
+/** 请求配置 */
+interface IRequestConfig {
+  url: string
+  method?: HttpMethod
+  data?: any
+  query?: Record<string, any>
+  header?: Record<string, string>
+  timeout?: number
+  dataType?: 'json' | 'text' | 'base64'
+  responseType?: 'text' | 'arraybuffer'
+  enableHttp2?: boolean
+  enableQuic?: boolean
+  enableCache?: boolean
+}
+
+/** 响应数据 */
+interface IResponse<T = any> {
+  data: T
+  statusCode: number
+  header: Record<string, string>
+  cookies?: string[]
+  profile?: any
+}
+
+/** 请求错误 */
+interface IRequestError {
+  errMsg: string
+  errno?: number
+  statusCode?: number
+  data?: any
+}
+```
+
+## 组件 Props 类型
+
+### 通用组件类型
+
+```typescript
+// src/types/components.d.ts
+
+/** 按钮组件 Props */
+interface IButtonProps {
+  type?: 'primary' | 'default' | 'success' | 'warning' | 'error'
+  size?: 'large' | 'default' | 'small' | 'mini'
+  plain?: boolean
+  disabled?: boolean
+  loading?: boolean
+  formType?: 'submit' | 'reset'
+  openType?:
+    | 'contact'
+    | 'share'
+    | 'getPhoneNumber'
+    | 'getUserInfo'
+    | 'launchApp'
+    | 'openSetting'
+    | 'feedback'
+    | 'getAuthorize'
+  lang?: 'zh_CN' | 'zh_TW' | 'en'
+  sessionFrom?: string
+  sendMessageTitle?: string
+  sendMessagePath?: string
+  sendMessageImg?: string
+  showMessageCard?: boolean
+  appParameter?: string
+  bindcontact?: (event: any) => void
+  bindgetuserinfo?: (event: any) => void
+  bindgetphonenumber?: (event: any) => void
+  binderror?: (event: any) => void
+  bindlaunchapp?: (event: any) => void
+  bindopensetting?: (event: any) => void
+}
+
+/** 输入框组件 Props */
+interface IInputProps {
+  value?: string
+  type?: 'text' | 'number' | 'idcard' | 'digit' | 'tel' | 'safe-password' | 'nickname'
+  password?: boolean
+  placeholder?: string
+  placeholderStyle?: string
+  placeholderClass?: string
+  disabled?: boolean
+  maxlength?: number
+  cursorSpacing?: number
+  focus?: boolean
+  confirmType?: 'send' | 'search' | 'next' | 'go' | 'done'
+  confirmHold?: boolean
+  cursor?: number
+  selectionStart?: number
+  selectionEnd?: number
+  adjustPosition?: boolean
+  holdKeyboard?: boolean
+  autoBlur?: boolean
+  ignoreCompositionEvent?: boolean
+}
+
+/** 图片组件 Props */
+interface IImageProps {
+  src: string
+  mode?:
+    | 'scaleToFill'
+    | 'aspectFit'
+    | 'aspectFill'
+    | 'widthFix'
+    | 'heightFix'
+    | 'top'
+    | 'bottom'
+    | 'center'
+    | 'left'
+    | 'right'
+    | 'topLeft'
+    | 'topRight'
+    | 'bottomLeft'
+    | 'bottomRight'
+  webp?: boolean
+  lazyLoad?: boolean
+  fadeShow?: boolean
+  loadingImg?: string
+  errorImg?: string
+  showMenuByLongpress?: boolean
+  draggable?: boolean
+}
+```
+
+### 业务组件类型
+
+```typescript
+// src/types/business.d.ts
+
+/** 用户卡片组件 Props */
+interface IUserCardProps {
+  user: IUserInfo
+  showActions?: boolean
+  clickable?: boolean
+  size?: 'small' | 'medium' | 'large'
+  onUserClick?: (user: IUserInfo) => void
+  onActionClick?: (action: string, user: IUserInfo) => void
+}
+
+/** 商品卡片组件 Props */
+interface IProductCardProps {
+  product: {
+    id: string | number
+    name: string
+    price: number
+    originalPrice?: number
+    image: string
+    description?: string
+    tags?: string[]
+    stock?: number
+    sales?: number
+    rating?: number
+  }
+  layout?: 'vertical' | 'horizontal'
+  showActions?: boolean
+  onProductClick?: (product: any) => void
+  onAddToCart?: (product: any) => void
+}
+
+/** 列表组件 Props */
+interface IListProps<T = any> {
+  data: T[]
+  loading?: boolean
+  error?: string | null
+  emptyText?: string
+  itemKey?: string | ((item: T) => string)
+  renderItem?: (item: T, index: number) => VNode
+  onItemClick?: (item: T, index: number) => void
+  onRefresh?: () => void
+  onLoadMore?: () => void
+  hasMore?: boolean
+}
+```
+
+## Store 状态类型
+
+### Pinia Store 类型
+
+```typescript
+// src/types/store.d.ts
+
+/** 用户 Store 状态 */
+interface IUserState {
+  userInfo: IUserInfo | null
+  token: string | null
+  isLoggedIn: boolean
+  permissions: string[]
+  profile: {
+    preferences: Record<string, any>
+    settings: Record<string, any>
+  } | null
+}
+
+/** 应用 Store 状态 */
+interface IAppState {
+  theme: 'light' | 'dark'
+  language: 'zh-Hans' | 'en'
+  networkStatus: 'online' | 'offline'
+  systemInfo: UniApp.GetSystemInfoResult | null
+  safeArea: {
+    top: number
+    bottom: number
+    left: number
+    right: number
+  }
+}
+
+/** 计数器 Store 状态 */
+interface ICountState {
+  count: number
+  step: number
+  history: number[]
+}
+
+/** Store Getters 类型 */
+interface IStoreGetters {
+  // User Store
+  isAdmin: (state: IUserState) => boolean
+  hasPermission: (state: IUserState) => (permission: string) => boolean
+
+  // App Store
+  isDark: (state: IAppState) => boolean
+  isMobile: (state: IAppState) => boolean
+}
+
+/** Store Actions 类型 */
+interface IStoreActions {
+  // User Store
+  login: (credentials: API.User.LoginRequest) => Promise<void>
+  logout: () => Promise<void>
+  updateProfile: (profile: Partial<IUserInfo>) => Promise<void>
+
+  // App Store
+  setTheme: (theme: 'light' | 'dark') => void
+  setLanguage: (lang: 'zh-Hans' | 'en') => void
+  updateSystemInfo: () => void
+}
+```
+
+## 工具函数类型
+
+### 通用工具类型
+
+```typescript
+// src/types/utils.d.ts
+
+/** 深度可选类型 */
+type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
+}
+
+/** 深度必需类型 */
+type DeepRequired<T> = {
+  [P in keyof T]-?: T[P] extends object ? DeepRequired<T[P]> : T[P]
+}
+
+/** 排除类型的键 */
+type OmitKeys<T, K extends keyof T> = Omit<T, K>
+
+/** 选择类型的键 */
+type PickKeys<T, K extends keyof T> = Pick<T, K>
+
+/** 函数参数类型 */
+type Parameters<T extends (...args: any) => any> = T extends (...args: infer P) => any ? P : never
+
+/** 函数返回值类型 */
+type ReturnType<T extends (...args: any) => any> = T extends (...args: any) => infer R ? R : any
+
+/** Promise 解包类型 */
+type Awaited<T> = T extends Promise<infer U> ? U : T
+
+/** 数组元素类型 */
+type ArrayElement<T> = T extends readonly (infer U)[] ? U : never
+
+/** 对象值类型 */
+type ObjectValues<T> = T[keyof T]
+
+/** 字符串字面量联合类型 */
+type StringLiteral<T> = T extends string ? (string extends T ? never : T) : never
+```
+
+### 表单相关类型
+
+```typescript
+// src/types/form.d.ts
+
+/** 表单验证规则 */
+interface IValidationRule {
+  required?: boolean
+  min?: number
+  max?: number
+  pattern?: RegExp
+  validator?: (value: any) => boolean | string
+  message?: string
+}
+
+/** 表单字段配置 */
+interface IFormField {
+  name: string
+  label: string
+  type: 'input' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'date' | 'time' | 'file'
+  placeholder?: string
+  options?: Array<{ label: string; value: any }>
+  rules?: IValidationRule[]
+  disabled?: boolean
+  visible?: boolean
+  props?: Record<string, any>
+}
+
+/** 表单配置 */
+interface IFormConfig {
+  fields: IFormField[]
+  layout?: 'vertical' | 'horizontal'
+  labelWidth?: string
+  showResetButton?: boolean
+  showSubmitButton?: boolean
+  submitText?: string
+  resetText?: string
+}
+
+/** 表单数据 */
+type FormData<T extends Record<string, IFormField>> = {
+  [K in keyof T]: any
+}
+
+/** 表单错误 */
+type FormErrors<T extends Record<string, any>> = {
+  [K in keyof T]?: string
+}
+```
+
+## 事件类型定义
+
+### 组件事件类型
+
+```typescript
+// src/types/events.d.ts
+
+/** 基础事件类型 */
+interface IBaseEvent {
+  type: string
+  timeStamp: number
+  target: {
+    id: string
+    offsetLeft: number
+    offsetTop: number
+    dataset: Record<string, any>
+  }
+  currentTarget: {
+    id: string
+    offsetLeft: number
+    offsetTop: number
+    dataset: Record<string, any>
+  }
+  detail: Record<string, any>
+}
+
+/** 触摸事件 */
+interface ITouchEvent extends IBaseEvent {
+  touches: Array<{
+    identifier: number
+    pageX: number
+    pageY: number
+    clientX: number
+    clientY: number
+  }>
+  changedTouches: Array<{
+    identifier: number
+    pageX: number
+    pageY: number
+    clientX: number
+    clientY: number
+  }>
+}
+
+/** 输入事件 */
+interface IInputEvent extends IBaseEvent {
+  detail: {
+    value: string
+    cursor?: number
+    keyCode?: number
+  }
+}
+
+/** 滚动事件 */
+interface IScrollEvent extends IBaseEvent {
+  detail: {
+    scrollLeft: number
+    scrollTop: number
+    scrollHeight: number
+    scrollWidth: number
+    deltaX: number
+    deltaY: number
+  }
+}
+```
+
+## 类型工具和辅助
+
+### 类型守卫
+
+```typescript
+// src/types/guards.d.ts
+
+/** 类型守卫函数 */
+type TypeGuard<T> = (value: any) => value is T
+
+/** 检查是否为字符串 */
+declare const isString: TypeGuard<string>
+
+/** 检查是否为数字 */
+declare const isNumber: TypeGuard<number>
+
+/** 检查是否为布尔值 */
+declare const isBoolean: TypeGuard<boolean>
+
+/** 检查是否为对象 */
+declare const isObject: TypeGuard<Record<string, any>>
+
+/** 检查是否为数组 */
+declare const isArray: TypeGuard<any[]>
+
+/** 检查是否为函数 */
+declare const isFunction: TypeGuard<Function>
+
+/** 检查是否为 Promise */
+declare const isPromise: TypeGuard<Promise<any>>
+
+/** 检查是否为有效的用户信息 */
+declare const isValidUserInfo: TypeGuard<IUserInfo>
+```
+
+### 条件类型
+
+```typescript
+// src/types/conditional.d.ts
+
+/** 如果 T 是数组，返回元素类型，否则返回 T */
+type UnwrapArray<T> = T extends (infer U)[] ? U : T
+
+/** 如果 T 是 Promise，返回解包后的类型 */
+type UnwrapPromise<T> = T extends Promise<infer U> ? U : T
+
+/** 如果 T 是函数，返回参数类型 */
+type GetFunctionArgs<T> = T extends (...args: infer P) => any ? P : never
+
+/** 如果 T 有指定属性，返回该属性的类型 */
+type GetProperty<T, K extends keyof T> = T extends Record<K, infer P> ? P : never
+
+/** 过滤对象中的函数属性 */
+type NonFunctionPropertyNames<T> = {
+  [K in keyof T]: T[K] extends Function ? never : K
+}[keyof T]
+
+type NonFunctionProperties<T> = Pick<T, NonFunctionPropertyNames<T>>
+```
+
+## 最佳实践
+
+### 命名规范
+
+```typescript
+// ✅ 接口使用 I 前缀
+interface IUser {}
+interface IApiResponse<T> {}
+
+// ✅ 类型别名使用描述性名称
+type UserRole = 'admin' | 'user' | 'guest'
+type RequestStatus = 'pending' | 'success' | 'error'
+
+// ✅ 泛型使用有意义的名称
+interface IRepository<TEntity, TKey> {
+  findById(id: TKey): Promise<TEntity | null>
+  save(entity: TEntity): Promise<TEntity>
+}
+```
+
+### 类型安全
+
+```typescript
+// ✅ 使用严格的类型定义
+interface IApiConfig {
+  readonly baseURL: string
+  readonly timeout: number
+  readonly retryCount: number
+}
+
+// ✅ 使用联合类型限制取值
+type HttpStatus = 200 | 400 | 401 | 403 | 404 | 500
+
+// ✅ 使用映射类型保持同步
+type UserUpdateRequest = Partial<Pick<IUser, 'nickname' | 'avatar' | 'email'>>
+```
+
+### 模块声明
+
+```typescript
+// ✅ 为第三方库添加类型声明
+declare module 'uni-app' {
+  interface Uni {
+    $emit(event: string, ...args: any[]): void
+    $on(event: string, callback: Function): void
+    $off(event: string, callback?: Function): void
+  }
+}
+
+// ✅ 扩展全局对象
+declare global {
+  interface Window {
+    webkitRequestAnimationFrame: (callback: FrameRequestCallback) => number
+  }
+}
+```
+
+description:
+globs:
+alwaysApply: false
+
+---

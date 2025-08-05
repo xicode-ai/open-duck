@@ -1,0 +1,342 @@
+# 调试和测试规则
+
+## 调试工具配置
+
+### H5 端调试
+
+- **浏览器开发者工具**: 标准 Web 调试
+- **Vue DevTools**: Vue 组件调试
+- **Network 面板**: 网络请求监控
+- **Console**: 日志输出和交互式调试
+
+### 小程序调试
+
+- **微信开发者工具**: 微信小程序专用调试器
+- **vConsole**: 参考 [src/pages/demo/base/vconsole.vue](mdc:src/pages/demo/base/vconsole.vue)
+- **小程序性能监控**: 内置性能分析工具
+- **真机调试**: 扫码在真机上调试
+
+### APP 端调试
+
+- **HBuilderX**: uni-app 官方 IDE
+- **Chrome DevTools**: 连接真机调试
+- **原生调试**: iOS Safari / Android Chrome
+
+## 日志输出规范
+
+### 开发环境日志
+
+```typescript
+// 开发环境详细日志
+if (import.meta.env.DEV) {
+  console.log('API请求:', url, params)
+  console.log('响应数据:', response)
+  console.log('用户操作:', action, data)
+}
+
+// 条件编译日志
+// #ifdef H5
+console.log('H5 端特有日志')
+// #endif
+
+// #ifdef MP-WEIXIN
+console.log('微信小程序日志')
+// #endif
+```
+
+### 生产环境日志
+
+```typescript
+// 生产环境只保留错误和关键信息
+if (import.meta.env.PROD) {
+  // 错误日志
+  console.error('系统错误:', error)
+
+  // 关键业务日志
+  console.log('用户登录成功:', userId)
+}
+
+// Vite 构建配置自动移除 console
+// vite.config.ts 中配置 drop_console: true
+```
+
+## Mock 数据配置
+
+基于 [mock/](mdc:mock/) 目录的 Mock 服务。
+
+### Mock 服务配置
+
+```typescript
+// mock/_mockProdServer.ts
+import { createProdMockServer } from 'vite-plugin-mock/es/createProdMockServer'
+import testModule from './test'
+
+export function setupProdMockServer() {
+  createProdMockServer([...testModule])
+}
+```
+
+### Mock API 定义
+
+```typescript
+// mock/test.ts
+import { MockMethod } from 'vite-plugin-mock'
+
+export default [
+  {
+    url: '/api/user/profile',
+    method: 'get',
+    response: () => {
+      return {
+        code: 200,
+        message: 'success',
+        data: {
+          id: 1,
+          name: '测试用户',
+          avatar: 'https://example.com/avatar.jpg',
+        },
+      }
+    },
+  },
+
+  {
+    url: '/api/list',
+    method: 'post',
+    response: ({ body }) => {
+      return {
+        code: 200,
+        data: {
+          total: 100,
+          list: Array.from({ length: 10 }).map((_, index) => ({
+            id: index + 1,
+            title: `测试数据 ${index + 1}`,
+            content: '这是测试内容',
+          })),
+        },
+      }
+    },
+  },
+] as MockMethod[]
+```
+
+## 错误处理和监控
+
+### 全局错误捕获
+
+```typescript
+// main.ts
+app.config.errorHandler = (error, instance, info) => {
+  console.error('全局错误:', error)
+  console.error('错误信息:', info)
+
+  // 生产环境上报错误
+  if (import.meta.env.PROD) {
+    // 上报错误到监控平台
+    reportError(error, info)
+  }
+}
+
+// 未捕获的 Promise 错误
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('未处理的 Promise 错误:', event.reason)
+  if (import.meta.env.PROD) {
+    reportError(event.reason, 'unhandledrejection')
+  }
+})
+```
+
+### 网络请求错误监控
+
+```typescript
+// src/utils/http.ts
+export const http = <T>(options: CustomRequestOptions) => {
+  return new Promise<IResData<T>>((resolve, reject) => {
+    uni.request({
+      ...options,
+      success(res) {
+        // 记录请求成功
+        if (import.meta.env.DEV) {
+          console.log('请求成功:', options.url, res)
+        }
+
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(res.data as IResData<T>)
+        } else {
+          // 记录业务错误
+          console.error('业务错误:', res.statusCode, res.data)
+          reject(res)
+        }
+      },
+      fail(err) {
+        // 记录网络错误
+        console.error('网络错误:', options.url, err)
+
+        // 生产环境上报网络错误
+        if (import.meta.env.PROD) {
+          reportNetworkError(options.url, err)
+        }
+
+        reject(err)
+      },
+    })
+  })
+}
+```
+
+## 性能监控
+
+### 页面性能监控
+
+```typescript
+// 页面加载性能
+const measurePageLoad = () => {
+  const startTime = Date.now()
+
+  onMounted(() => {
+    const loadTime = Date.now() - startTime
+    console.log('页面加载时间:', loadTime, 'ms')
+
+    // 上报性能数据
+    if (import.meta.env.PROD) {
+      reportPerformance('page_load', loadTime)
+    }
+  })
+}
+
+// 接口响应性能
+const measureApiResponse = async (apiCall: () => Promise<any>) => {
+  const startTime = Date.now()
+  try {
+    const result = await apiCall()
+    const responseTime = Date.now() - startTime
+    console.log('接口响应时间:', responseTime, 'ms')
+    return result
+  } catch (error) {
+    console.error('接口调用失败:', error)
+    throw error
+  }
+}
+```
+
+### 内存使用监控
+
+```typescript
+// H5 端内存监控
+// #ifdef H5
+const monitorMemory = () => {
+  if ('memory' in performance) {
+    const memory = (performance as any).memory
+    console.log('内存使用:', {
+      used: memory.usedJSHeapSize,
+      total: memory.totalJSHeapSize,
+      limit: memory.jsHeapSizeLimit,
+    })
+  }
+}
+
+// 定期监控内存使用
+setInterval(monitorMemory, 30000)
+// #endif
+```
+
+## 单元测试 (可选扩展)
+
+### 测试框架配置
+
+```typescript
+// 推荐使用 Vitest
+// vitest.config.ts
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./test/setup.ts'],
+  },
+})
+```
+
+### 组件测试示例
+
+```typescript
+// 组件测试示例
+import { mount } from '@vue/test-utils'
+import { describe, it, expect } from 'vitest'
+import MyComponent from '@/components/MyComponent.vue'
+
+describe('MyComponent', () => {
+  it('renders properly', () => {
+    const wrapper = mount(MyComponent, {
+      props: { title: 'Hello World' },
+    })
+    expect(wrapper.text()).toContain('Hello World')
+  })
+
+  it('handles click event', async () => {
+    const wrapper = mount(MyComponent)
+    await wrapper.find('button').trigger('click')
+    expect(wrapper.emitted().click).toBeTruthy()
+  })
+})
+```
+
+## 调试最佳实践
+
+### 断点调试
+
+```typescript
+// 条件断点
+if (userId === 'debug') {
+  debugger // 只在特定条件下触发断点
+}
+
+// 开发环境断点
+if (import.meta.env.DEV) {
+  debugger
+}
+```
+
+### 调试信息输出
+
+```typescript
+// 结构化日志输出
+const debugLog = (module: string, action: string, data?: any) => {
+  if (import.meta.env.DEV) {
+    console.group(`[${module}] ${action}`)
+    if (data) {
+      console.log('数据:', data)
+    }
+    console.trace('调用栈')
+    console.groupEnd()
+  }
+}
+
+// 使用示例
+debugLog('UserStore', 'login', { username, timestamp: Date.now() })
+```
+
+### 网络请求调试
+
+```typescript
+// 请求拦截调试
+const debugRequest = (config: any) => {
+  console.log('请求配置:', config)
+  console.log('请求头:', config.header)
+  console.log('请求参数:', config.data || config.query)
+  return config
+}
+
+// 响应拦截调试
+const debugResponse = (response: any) => {
+  console.log('响应状态:', response.statusCode)
+  console.log('响应数据:', response.data)
+  return response
+}
+```
+
+description:
+globs:
+alwaysApply: false
+
+---

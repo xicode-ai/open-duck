@@ -1,0 +1,225 @@
+# 路由导航规则
+
+## 页面配置
+
+基于 [src/pages.json](mdc:src/pages.json) 的 uni-app 页面配置。
+
+## 页面类型定义
+
+- **home**: 首页 (tabBar 首页)
+- **page**: 普通页面
+- **隐藏页面**: 设置 `"hide": true`
+
+## 页面组织结构
+
+### 主包页面 (src/pages/)
+
+```
+pages/
+├── index/          # 首页模块
+├── demo/           # 示例页面模块
+├── login/          # 登录模块
+└── my/             # 个人中心模块
+```
+
+### 分包页面 (src/pages-sub/)
+
+```
+pages-sub/
+└── demo/           # 示例分包
+```
+
+## 路由拦截机制
+
+基于 [src/interceptors/route.ts](mdc:src/interceptors/route.ts) 实现登录拦截。
+
+### 拦截器配置
+
+- **拦截方法**: `navigateTo`, `reLaunch`, `redirectTo`
+- **登录检查**: 基于用户 store 的登录状态
+- **重定向**: 未登录用户跳转到登录页面，并携带原始 URL
+
+### 需要登录的页面
+
+在 pages.json 中标记 `"needLogin": true`：
+
+```json
+{
+  "path": "pages/demo/route-interceptor/login-page",
+  "needLogin": true,
+  "style": {
+    "navigationBarTitleText": "需要登录的页面"
+  }
+}
+```
+
+## 导航方式
+
+### 声明式导航
+
+```vue
+<template>
+  <!-- navigator 组件 -->
+  <navigator url="/pages/demo/index" hover-class="navigator-hover">跳转到示例页面</navigator>
+
+  <!-- view + @click -->
+  <view @click="navigateToDemo">跳转示例</view>
+</template>
+
+<script setup lang="ts">
+const navigateToDemo = () => {
+  uni.navigateTo({
+    url: '/pages/demo/index?param=value',
+  })
+}
+</script>
+```
+
+### 编程式导航
+
+```typescript
+// 保留当前页面，跳转到应用内的某个页面
+uni.navigateTo({
+  url: '/pages/detail/index?id=123',
+})
+
+// 关闭当前页面，跳转到应用内的某个页面
+uni.redirectTo({
+  url: '/pages/index/index',
+})
+
+// 跳转到 tabBar 页面，并关闭其他所有非 tabBar 页面
+uni.switchTab({
+  url: '/pages/index/index',
+})
+
+// 关闭所有页面，打开到应用内的某个页面
+uni.reLaunch({
+  url: '/pages/login/index',
+})
+
+// 关闭当前页面，返回上一页面或多级页面
+uni.navigateBack({
+  delta: 1,
+})
+```
+
+## 页面参数传递
+
+### URL 参数
+
+```typescript
+// 传递参数
+uni.navigateTo({
+  url: '/pages/detail/index?id=123&name=test',
+})
+
+// 接收参数
+onLoad((options: any) => {
+  console.log('参数:', options)
+  const { id, name } = options
+})
+```
+
+### 复杂数据传递
+
+```typescript
+// 使用 eventChannel 传递复杂数据
+uni.navigateTo({
+  url: '/pages/detail/index',
+  events: {
+    acceptData: (data) => {
+      console.log('接收到数据:', data)
+    },
+  },
+  success: (res) => {
+    res.eventChannel.emit('acceptData', {
+      id: 123,
+      userData: { name: 'test', age: 18 },
+    })
+  },
+})
+```
+
+## tabBar 配置
+
+```json
+{
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#018d71",
+    "backgroundColor": "#F8F8F8",
+    "list": [
+      {
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/homeHL.png",
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      }
+    ]
+  }
+}
+```
+
+## 页面生命周期
+
+```vue
+<script setup lang="ts">
+// 页面加载时触发
+onLoad((options: any) => {
+  console.log('页面加载', options)
+})
+
+// 页面显示时触发
+onShow(() => {
+  console.log('页面显示')
+})
+
+// 页面隐藏时触发
+onHide(() => {
+  console.log('页面隐藏')
+})
+
+// 页面卸载时触发
+onUnload(() => {
+  console.log('页面卸载')
+})
+
+// 下拉刷新
+onPullDownRefresh(() => {
+  console.log('下拉刷新')
+  // 停止下拉刷新
+  uni.stopPullDownRefresh()
+})
+
+// 上拉加载更多
+onReachBottom(() => {
+  console.log('上拉加载更多')
+})
+</script>
+```
+
+## 页面布局系统
+
+基于 [src/layouts/](mdc:src/layouts/) 的布局模板：
+
+- **default.vue**: 默认布局
+- **demo.vue**: 示例页面布局
+
+在 pages.json 中指定布局：
+
+```json
+{
+  "path": "pages/demo/index",
+  "layout": "demo",
+  "style": {
+    "navigationBarTitleText": "示例页面"
+  }
+}
+```
+
+description:
+globs:
+alwaysApply: false
+
+---

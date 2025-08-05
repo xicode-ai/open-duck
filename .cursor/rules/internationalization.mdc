@@ -1,0 +1,497 @@
+# 国际化 (i18n) 规则
+
+## 国际化配置
+
+基于 [src/locale/index.ts](mdc:src/locale/index.ts) 的 vue-i18n 配置。
+
+## 语言文件组织
+
+### 目录结构
+
+```
+src/locale/
+├── index.ts           # i18n 配置入口
+├── en.json           # 英文语言包
+├── zh-Hans.json      # 简体中文语言包
+└── README.md         # 使用说明
+```
+
+### 语言文件格式
+
+```json
+// zh-Hans.json
+{
+  "app": {
+    "name": "最好的 uniapp 开发模板",
+    "slogan": "快速开发，跨平台部署"
+  },
+  "common": {
+    "confirm": "确认",
+    "cancel": "取消",
+    "loading": "加载中...",
+    "error": "出错了",
+    "success": "成功",
+    "failed": "失败"
+  },
+  "pages": {
+    "home": {
+      "title": "首页",
+      "welcome": "欢迎使用 unibest"
+    },
+    "login": {
+      "title": "登录",
+      "username": "用户名",
+      "password": "密码",
+      "loginBtn": "立即登录"
+    }
+  },
+  "validation": {
+    "required": "此项为必填项",
+    "minLength": "至少输入 {min} 个字符",
+    "maxLength": "最多输入 {max} 个字符",
+    "email": "请输入有效的邮箱地址"
+  }
+}
+```
+
+## Vue 组件中使用
+
+### Composition API 中使用
+
+```vue
+<template>
+  <view class="page">
+    <text>{{ $t('app.name') }}</text>
+    <text>{{ $t('common.loading') }}</text>
+
+    <!-- 带参数的翻译 -->
+    <text>{{ $t('validation.minLength', { min: 6 }) }}</text>
+
+    <!-- 复数形式 -->
+    <text>{{ $tn('messages.count', messageCount) }}</text>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t, locale, availableLocales } = useI18n()
+
+// 动态切换语言
+const switchLanguage = (lang: string) => {
+  locale.value = lang
+  // 同步更新 uni-app 的语言设置
+  uni.setLocale(lang)
+}
+
+// 获取翻译文本
+const getTranslation = (key: string, params?: Record<string, any>) => {
+  return t(key, params)
+}
+
+// 检查是否为中文环境
+const isChinese = computed(() => locale.value.includes('zh'))
+</script>
+```
+
+### Options API 中使用
+
+```vue
+<template>
+  <view>
+    <text>{{ $t('pages.home.title') }}</text>
+  </view>
+</template>
+
+<script lang="ts">
+export default {
+  computed: {
+    currentLanguage() {
+      return this.$i18n.locale
+    },
+
+    welcomeMessage() {
+      return this.$t('pages.home.welcome')
+    },
+  },
+
+  methods: {
+    changeLanguage(lang: string) {
+      this.$i18n.locale = lang
+      uni.setLocale(lang)
+    },
+  },
+}
+</script>
+```
+
+## 非 Vue 文件中使用
+
+### 在工具函数中使用
+
+```typescript
+// src/utils/i18n.ts
+import { translate } from '@/locale/index'
+
+export const showLocalizedMessage = (key: string, params?: Record<string, any>) => {
+  const message = translate(key, params)
+  uni.showToast({
+    title: message,
+    icon: 'none',
+  })
+}
+
+export const getLocalizedTitle = (key: string) => {
+  return translate(key)
+}
+
+// 使用示例
+showLocalizedMessage('common.success')
+uni.setNavigationBarTitle({
+  title: getLocalizedTitle('pages.home.title'),
+})
+```
+
+### 在请求拦截器中使用
+
+```typescript
+// src/interceptors/request.ts
+import { translate } from '@/locale/index'
+
+const handleError = (error: any) => {
+  let message = translate('common.error')
+
+  if (error.statusCode === 401) {
+    message = translate('auth.loginRequired')
+  } else if (error.statusCode === 403) {
+    message = translate('auth.accessDenied')
+  }
+
+  uni.showToast({
+    title: message,
+    icon: 'none',
+  })
+}
+```
+
+## 页面标题国际化
+
+### pages.json 中配置
+
+```json
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "%app.name%"
+      }
+    },
+    {
+      "path": "pages/demo/page/i18n",
+      "style": {
+        "navigationBarTitleText": "%pages.demo.title%"
+      }
+    }
+  ]
+}
+```
+
+### 动态设置页面标题
+
+```typescript
+// 在页面中动态设置标题
+onLoad(() => {
+  const title = t('pages.current.title')
+  uni.setNavigationBarTitle({ title })
+})
+
+// 根据语言切换标题
+watch(locale, (newLocale) => {
+  const title = t('pages.current.title')
+  uni.setNavigationBarTitle({ title })
+})
+```
+
+## 日期和数字格式化
+
+### 日期格式化
+
+```typescript
+import { useI18n } from 'vue-i18n'
+import dayjs from 'dayjs'
+
+const { locale } = useI18n()
+
+// 根据语言格式化日期
+const formatDate = (date: Date | string, format?: string) => {
+  const defaultFormat = locale.value.includes('zh') ? 'YYYY年MM月DD日' : 'MMM DD, YYYY'
+
+  return dayjs(date).format(format || defaultFormat)
+}
+
+// 相对时间格式化
+const formatRelativeTime = (date: Date | string) => {
+  return locale.value.includes('zh')
+    ? dayjs(date).fromNow() // 使用中文相对时间
+    : dayjs(date).fromNow() // 使用英文相对时间
+}
+```
+
+### 数字格式化
+
+```typescript
+// 货币格式化
+const formatCurrency = (amount: number) => {
+  const currencySymbol = locale.value.includes('zh') ? '¥' : '$'
+  const options = {
+    style: 'currency',
+    currency: locale.value.includes('zh') ? 'CNY' : 'USD',
+  }
+
+  return new Intl.NumberFormat(locale.value, options).format(amount)
+}
+
+// 数字格式化
+const formatNumber = (num: number) => {
+  return new Intl.NumberFormat(locale.value).format(num)
+}
+```
+
+## 动态语言切换
+
+### 语言切换组件
+
+```vue
+<template>
+  <view class="language-switcher">
+    <picker
+      :value="currentLangIndex"
+      :range="languageOptions"
+      range-key="label"
+      @change="onLanguageChange"
+    >
+      <view class="picker-display">
+        {{ currentLanguage.label }}
+        <text class="arrow">▼</text>
+      </view>
+    </picker>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { locale, availableLocales } = useI18n()
+
+const languageOptions = [
+  { value: 'zh-Hans', label: '简体中文' },
+  { value: 'en', label: 'English' },
+]
+
+const currentLangIndex = computed(() =>
+  languageOptions.findIndex((lang) => lang.value === locale.value),
+)
+
+const currentLanguage = computed(
+  () => languageOptions[currentLangIndex.value] || languageOptions[0],
+)
+
+const onLanguageChange = (e: any) => {
+  const selectedLang = languageOptions[e.detail.value]
+  locale.value = selectedLang.value
+
+  // 保存到本地存储
+  uni.setStorageSync('language', selectedLang.value)
+
+  // 更新 uni-app 语言设置
+  uni.setLocale(selectedLang.value)
+
+  // 重新设置页面标题
+  updatePageTitle()
+}
+
+const updatePageTitle = () => {
+  const currentPages = getCurrentPages()
+  const currentPage = currentPages[currentPages.length - 1]
+  // 根据路由获取对应的标题键值
+  const titleKey = getPageTitleKey(currentPage.route)
+  if (titleKey) {
+    uni.setNavigationBarTitle({
+      title: t(titleKey),
+    })
+  }
+}
+</script>
+```
+
+## 表单验证国际化
+
+### 验证规则国际化
+
+```typescript
+// src/utils/validation.ts
+import { useI18n } from 'vue-i18n'
+
+export const useValidationRules = () => {
+  const { t } = useI18n()
+
+  return {
+    required: (message?: string) => ({
+      required: true,
+      message: message || t('validation.required'),
+    }),
+
+    minLength: (min: number, message?: string) => ({
+      min,
+      message: message || t('validation.minLength', { min }),
+    }),
+
+    maxLength: (max: number, message?: string) => ({
+      max,
+      message: message || t('validation.maxLength', { max }),
+    }),
+
+    email: (message?: string) => ({
+      type: 'email',
+      message: message || t('validation.email'),
+    }),
+
+    phone: (message?: string) => ({
+      pattern: /^1[3-9]\d{9}$/,
+      message: message || t('validation.phone'),
+    }),
+  }
+}
+
+// 使用示例
+const rules = useValidationRules()
+
+const formRules = {
+  username: [rules.required(), rules.minLength(3)],
+  email: [rules.required(), rules.email()],
+  phone: [rules.required(), rules.phone()],
+}
+```
+
+## 最佳实践
+
+### 键值命名规范
+
+```typescript
+// ✅ 好的命名
+'pages.home.title'
+'common.actions.save'
+'errors.network.timeout'
+'validation.required'
+
+// ❌ 避免的命名
+'homeTitle'
+'save'
+'error1'
+'req'
+```
+
+### 翻译内容规范
+
+```json
+{
+  // ✅ 提供上下文信息
+  "buttons": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除"
+  },
+
+  // ✅ 使用参数化
+  "messages": {
+    "welcome": "欢迎，{username}！",
+    "itemCount": "共 {count} 项"
+  },
+
+  // ❌ 避免硬编码值
+  "colors": {
+    "red": "#ff0000" // 应该在样式中定义
+  }
+}
+```
+
+### 性能优化
+
+```typescript
+// 懒加载语言包
+const loadLanguageAsync = async (lang: string) => {
+  try {
+    const messages = await import(`@/locale/${lang}.json`)
+    i18n.global.setLocaleMessage(lang, messages.default)
+    return true
+  } catch (error) {
+    console.error(`Failed to load language: ${lang}`, error)
+    return false
+  }
+}
+
+// 缓存翻译结果
+const translationCache = new Map<string, string>()
+
+const cachedTranslate = (key: string, params?: Record<string, any>) => {
+  const cacheKey = `${key}-${JSON.stringify(params)}-${locale.value}`
+
+  if (translationCache.has(cacheKey)) {
+    return translationCache.get(cacheKey)!
+  }
+
+  const result = t(key, params)
+  translationCache.set(cacheKey, result)
+  return result
+}
+```
+
+## 平台差异处理
+
+### 小程序端国际化
+
+```typescript
+// 小程序端需要特别处理
+// #ifdef MP
+const setTabBarText = () => {
+  const tabList = [
+    { index: 0, text: t('tabbar.home') },
+    { index: 1, text: t('tabbar.demo') },
+    { index: 2, text: t('tabbar.my') },
+  ]
+
+  tabList.forEach((item) => {
+    uni.setTabBarItem(item)
+  })
+}
+
+// 监听语言变化更新 tabbar
+watch(locale, setTabBarText, { immediate: true })
+// #endif
+```
+
+### H5 端国际化
+
+```typescript
+// H5 端可以使用更丰富的国际化功能
+// #ifdef H5
+const initBrowserLanguage = () => {
+  const browserLang = navigator.language || navigator.languages[0]
+  const supportedLang = browserLang.includes('zh') ? 'zh-Hans' : 'en'
+
+  if (!uni.getStorageSync('language')) {
+    locale.value = supportedLang
+    uni.setStorageSync('language', supportedLang)
+  }
+}
+
+onMounted(initBrowserLanguage)
+// #endif
+```
+
+description:
+globs:
+alwaysApply: false
+
+---

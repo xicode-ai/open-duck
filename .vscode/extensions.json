@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "vue.volar",
+    "stylelint.vscode-stylelint",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "antfu.unocss",
+    "antfu.iconify",
+    "evils.uniapp-vscode",
+    "mrmaoddxxaa.create-uniapp-view",
+    "mrmlnc.vscode-json5",
+    "stagewise.stagewise-vscode-extension"
+  ]
+}

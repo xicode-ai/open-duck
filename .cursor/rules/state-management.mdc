@@ -1,0 +1,127 @@
+# 状态管理规则 (Pinia)
+
+## Store 结构规范
+
+基于 [src/store/index.ts](mdc:src/store/index.ts) 的配置，所有 store 已启用数据持久化。
+
+## Store 定义模板
+
+```typescript
+import { defineStore } from 'pinia'
+
+export const useExampleStore = defineStore(
+  'example',
+  () => {
+    // 状态定义
+    const state = ref({
+      data: null,
+      loading: false,
+      error: null,
+    })
+
+    // 计算属性
+    const isReady = computed(() => !state.value.loading && !state.value.error)
+
+    // 方法定义
+    const fetchData = async () => {
+      state.value.loading = true
+      try {
+        // 异步操作
+        state.value.data = await api.getData()
+      } catch (error) {
+        state.value.error = error
+      } finally {
+        state.value.loading = false
+      }
+    }
+
+    const resetState = () => {
+      state.value = {
+        data: null,
+        loading: false,
+        error: null,
+      }
+    }
+
+    return {
+      // 状态
+      state: readonly(state),
+
+      // 计算属性
+      isReady,
+
+      // 方法
+      fetchData,
+      resetState,
+    }
+  },
+  {
+    // 持久化配置
+    persist: {
+      key: 'example-store',
+      storage: {
+        getItem: uni.getStorageSync,
+        setItem: uni.setStorageSync,
+      },
+      // 选择性持久化
+      paths: ['state.data'],
+    },
+  },
+)
+```
+
+## 现有 Store 模块
+
+- [src/store/user.ts](mdc:src/store/user.ts) - 用户信息管理
+- [src/store/count.ts](mdc:src/store/count.ts) - 计数器示例
+
+## 数据持久化配置
+
+- 基于 uni-app 的 getStorageSync/setStorageSync
+- 跨平台兼容的本地存储方案
+- 可选择性持久化特定字段
+
+## Store 使用规范
+
+1. **命名规范**: useXxxStore 形式
+2. **状态设计**: 扁平化结构，避免深层嵌套
+3. **异步操作**: 在 action 中处理，包含 loading 状态
+4. **错误处理**: 统一的错误状态管理
+5. **重置机制**: 提供状态重置方法
+
+## Store 组织原则
+
+- 按业务模块划分 store
+- 避免过大的单一 store
+- 相关状态集中管理
+- 保持状态的单一数据源
+
+## 在组件中使用
+
+```vue
+<script setup lang="ts">
+import { useExampleStore } from '@/store'
+
+const exampleStore = useExampleStore()
+
+// 响应式访问状态
+const { state, isReady } = storeToRefs(exampleStore)
+
+// 调用方法
+const handleFetch = () => {
+  exampleStore.fetchData()
+}
+</script>
+```
+
+## 性能优化建议
+
+- 使用 storeToRefs 保持响应性
+- 避免在模板中直接访问复杂计算
+- 合理使用 computed 缓存派生状态
+- 及时清理不需要的状态数据
+  description:
+  globs:
+  alwaysApply: false
+
+---

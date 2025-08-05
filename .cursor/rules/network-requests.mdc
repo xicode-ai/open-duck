@@ -1,0 +1,147 @@
+# 网络请求规则
+
+## HTTP 封装结构
+
+基于 [src/utils/http.ts](mdc:src/utils/http.ts) 和 [src/interceptors/request.ts](mdc:src/interceptors/request.ts) 的设计。
+
+## 请求配置
+
+- **基础地址**: 通过环境变量 `VITE_SERVER_BASEURL` 配置
+- **超时时间**: 默认 10 秒
+- **请求头**: 自动添加平台标识和 Authorization token
+- **数据格式**: 统一 JSON 格式
+
+## 拦截器功能
+
+### 请求拦截器 ([src/interceptors/request.ts](mdc:src/interceptors/request.ts))
+
+```typescript
+// 自动拼接 baseURL
+// 添加查询参数支持 (query 字段)
+// 设置请求超时
+// 添加平台标识头
+// 自动添加 Authorization token
+```
+
+### 响应处理
+
+- **2xx 状态码**: 正常返回数据
+- **401 状态码**: 清理用户信息，跳转登录
+- **其他错误**: 显示错误提示信息
+- **网络错误**: 显示网络错误提示
+
+## API 服务定义规范
+
+```typescript
+// src/service/example.ts
+import { http } from '@/utils/http'
+
+// 接口类型定义
+interface ExampleRequest {
+  id: string
+  name: string
+}
+
+interface ExampleResponse {
+  id: string
+  name: string
+  createTime: string
+}
+
+// API 服务函数
+export const exampleApi = {
+  // 获取列表
+  getList: (params?: Record<string, any>) =>
+    http<ExampleResponse[]>({
+      url: '/api/example/list',
+      method: 'GET',
+      query: params,
+    }),
+
+  // 获取详情
+  getDetail: (id: string) =>
+    http<ExampleResponse>({
+      url: `/api/example/${id}`,
+      method: 'GET',
+    }),
+
+  // 创建
+  create: (data: ExampleRequest) =>
+    http<ExampleResponse>({
+      url: '/api/example',
+      method: 'POST',
+      data,
+    }),
+
+  // 更新
+  update: (id: string, data: Partial<ExampleRequest>) =>
+    http<ExampleResponse>({
+      url: `/api/example/${id}`,
+      method: 'PUT',
+      data,
+    }),
+
+  // 删除
+  delete: (id: string) =>
+    http<void>({
+      url: `/api/example/${id}`,
+      method: 'DELETE',
+    }),
+}
+```
+
+## 文件上传
+
+使用 `uniFileUpload` 函数处理文件上传：
+
+```typescript
+import { uniFileUpload } from '@/utils/http'
+
+const uploadFile = (filePath: string) =>
+  uniFileUpload<{ url: string }>({
+    url: '/api/upload',
+    filePath,
+    name: 'file',
+    formData: {
+      userId: 'xxx',
+    },
+  })
+```
+
+## 错误处理策略
+
+1. **网络错误**: 统一显示 "网络错误，换个网络试试"
+2. **业务错误**: 显示后端返回的具体错误信息
+3. **401 授权错误**: 自动跳转到登录页面
+4. **其他错误**: 显示通用错误提示
+
+## Mock 数据支持
+
+- 开发环境可启用 Mock 服务
+- 生产环境严禁使用 Mock 数据
+- Mock 配置在 [mock/](mdc:mock/) 目录
+
+## 请求缓存策略
+
+- GET 请求考虑适当缓存
+- 用户敏感数据不缓存
+- 缓存时间根据业务需求调整
+
+## 并发请求控制
+
+- 同一接口避免重复请求
+- 实现请求取消机制
+- 合理控制并发数量
+
+## 环境配置
+
+不同环境使用不同的 API 地址：
+
+- 开发环境: 本地后端服务
+- 测试环境: 测试服务器地址
+- 生产环境: 正式服务器地址
+  description:
+  globs:
+  alwaysApply: false
+
+---

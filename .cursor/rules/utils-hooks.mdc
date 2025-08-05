@@ -1,0 +1,761 @@
+# 工具函数和 Hooks 规则
+
+## 工具函数规范
+
+基于 [src/utils/index.ts](mdc:src/utils/index.ts) 的工具函数组织。
+
+## 工具函数分类
+
+### 目录结构
+
+```
+src/utils/
+├── index.ts          # 通用工具函数
+├── http.ts           # HTTP 请求工具
+├── format.ts         # 格式化工具
+├── validate.ts       # 验证工具
+├── storage.ts        # 存储工具
+├── platform.ts       # 平台判断工具
+├── date.ts           # 日期处理工具
+└── url.ts            # URL 处理工具
+```
+
+### 通用工具函数
+
+```typescript
+// src/utils/common.ts
+
+/**
+ * 获取数组最后一个元素（兼容安卓）
+ * 替代 arr.at(-1) 在安卓机上的兼容性问题
+ */
+export const getLastItem = <T>(arr: T[]): T | undefined => {
+  return arr[arr.length - 1]
+}
+
+/**
+ * 根据索引获取数组元素
+ * 支持负数索引
+ */
+export const getArrElementByIdx = <T>(arr: T[], index: number): T | undefined => {
+  if (index < 0) return arr[arr.length + index]
+  if (index >= arr.length) return undefined
+  return arr[index]
+}
+
+/**
+ * 防抖函数
+ */
+export const debounce = <T extends (...args: any[]) => any>(
+  func: T,
+  wait: number,
+): ((...args: Parameters<T>) => void) => {
+  let timeout: NodeJS.Timeout
+
+  return function executedFunction(...args: Parameters<T>) {
+    const later = () => {
+      clearTimeout(timeout)
+      func(...args)
+    }
+
+    clearTimeout(timeout)
+    timeout = setTimeout(later, wait)
+  }
+}
+
+/**
+ * 节流函数
+ */
+export const throttle = <T extends (...args: any[]) => any>(
+  func: T,
+  limit: number,
+): ((...args: Parameters<T>) => void) => {
+  let inThrottle: boolean
+
+  return function executedFunction(...args: Parameters<T>) {
+    if (!inThrottle) {
+      func(...args)
+      inThrottle = true
+      setTimeout(() => (inThrottle = false), limit)
+    }
+  }
+}
+
+/**
+ * 深拷贝
+ */
+export const deepClone = <T>(obj: T): T => {
+  if (obj === null || typeof obj !== 'object') return obj
+  if (obj instanceof Date) return new Date(obj.getTime()) as unknown as T
+  if (obj instanceof Array) return obj.map((item) => deepClone(item)) as unknown as T
+  if (typeof obj === 'object') {
+    const clonedObj = {} as T
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        clonedObj[key] = deepClone(obj[key])
+      }
+    }
+    return clonedObj
+  }
+  return obj
+}
+```
+
+### 格式化工具
+
+```typescript
+// src/utils/format.ts
+
+/**
+ * 格式化文件大小
+ */
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
+}
+
+/**
+ * 格式化数字，添加千分位分隔符
+ */
+export const formatNumber = (num: number): string => {
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
+
+/**
+ * 格式化手机号，中间4位显示为星号
+ */
+export const formatPhone = (phone: string): string => {
+  return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+}
+
+/**
+ * 格式化身份证号，中间显示为星号
+ */
+export const formatIdCard = (idCard: string): string => {
+  return idCard.replace(/(\d{6})\d{8}(\d{4})/, '$1********$2')
+}
+
+/**
+ * 格式化金额
+ */
+export const formatMoney = (amount: number, decimals = 2): string => {
+  return (amount / 100).toFixed(decimals)
+}
+
+/**
+ * 截断文本
+ */
+export const truncateText = (text: string, maxLength: number, suffix = '...'): string => {
+  if (text.length <= maxLength) return text
+  return text.substring(0, maxLength - suffix.length) + suffix
+}
+```
+
+### 验证工具
+
+```typescript
+// src/utils/validate.ts
+
+/**
+ * 验证手机号
+ */
+export const isValidPhone = (phone: string): boolean => {
+  return /^1[3-9]\d{9}$/.test(phone)
+}
+
+/**
+ * 验证邮箱
+ */
+export const isValidEmail = (email: string): boolean => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+/**
+ * 验证身份证号
+ */
+export const isValidIdCard = (idCard: string): boolean => {
+  return /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/.test(idCard)
+}
+
+/**
+ * 验证密码强度
+ */
+export const validatePasswordStrength = (
+  password: string,
+): {
+  isValid: boolean
+  strength: 'weak' | 'medium' | 'strong'
+  issues: string[]
+} => {
+  const issues: string[] = []
+
+  if (password.length < 8) issues.push('密码长度至少8位')
+  if (!/[a-z]/.test(password)) issues.push('需要包含小写字母')
+  if (!/[A-Z]/.test(password)) issues.push('需要包含大写字母')
+  if (!/\d/.test(password)) issues.push('需要包含数字')
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) issues.push('需要包含特殊字符')
+
+  let strength: 'weak' | 'medium' | 'strong' = 'weak'
+  if (issues.length <= 1) strength = 'strong'
+  else if (issues.length <= 2) strength = 'medium'
+
+  return {
+    isValid: issues.length === 0,
+    strength,
+    issues,
+  }
+}
+
+/**
+ * 验证URL
+ */
+export const isValidUrl = (url: string): boolean => {
+  try {
+    new URL(url)
+    return true
+  } catch {
+    return false
+  }
+}
+```
+
+### 存储工具
+
+```typescript
+// src/utils/storage.ts
+
+/**
+ * 统一的存储接口
+ */
+class StorageManager {
+  /**
+   * 设置存储
+   */
+  set<T>(key: string, value: T): void {
+    try {
+      const serializedValue = JSON.stringify(value)
+      uni.setStorageSync(key, serializedValue)
+    } catch (error) {
+      console.error(`Storage set error for key "${key}":`, error)
+    }
+  }
+
+  /**
+   * 获取存储
+   */
+  get<T>(key: string, defaultValue?: T): T | undefined {
+    try {
+      const value = uni.getStorageSync(key)
+      if (value === '' || value === null || value === undefined) {
+        return defaultValue
+      }
+      return JSON.parse(value)
+    } catch (error) {
+      console.error(`Storage get error for key "${key}":`, error)
+      return defaultValue
+    }
+  }
+
+  /**
+   * 删除存储
+   */
+  remove(key: string): void {
+    try {
+      uni.removeStorageSync(key)
+    } catch (error) {
+      console.error(`Storage remove error for key "${key}":`, error)
+    }
+  }
+
+  /**
+   * 清空所有存储
+   */
+  clear(): void {
+    try {
+      uni.clearStorageSync()
+    } catch (error) {
+      console.error('Storage clear error:', error)
+    }
+  }
+
+  /**
+   * 获取存储信息
+   */
+  getInfo(): { keys: string[]; currentSize: number; limitSize: number } {
+    try {
+      return uni.getStorageInfoSync()
+    } catch (error) {
+      console.error('Storage info error:', error)
+      return { keys: [], currentSize: 0, limitSize: 0 }
+    }
+  }
+
+  /**
+   * 检查key是否存在
+   */
+  has(key: string): boolean {
+    const info = this.getInfo()
+    return info.keys.includes(key)
+  }
+}
+
+export const storage = new StorageManager()
+
+// 便捷的存储方法
+export const setStorage = storage.set.bind(storage)
+export const getStorage = storage.get.bind(storage)
+export const removeStorage = storage.remove.bind(storage)
+export const clearStorage = storage.clear.bind(storage)
+```
+
+## Hooks 规范
+
+基于 [src/hooks/useRequest.ts](mdc:src/hooks/useRequest.ts) 的 Hooks 开发。
+
+### 请求 Hook
+
+```typescript
+// src/hooks/useRequest.ts (已存在，补充说明)
+
+/**
+ * 请求状态管理 Hook
+ * 提供loading、error、data状态和手动触发功能
+ */
+export const useRequest = <T>(
+  requestFn: () => Promise<IResData<T>>,
+  options: {
+    immediate?: boolean
+    initialData?: T
+    onSuccess?: (data: T) => void
+    onError?: (error: any) => void
+  } = {},
+) => {
+  const { immediate = true, initialData, onSuccess, onError } = options
+
+  const loading = ref(false)
+  const error = ref<any>(null)
+  const data = ref<T | undefined>(initialData)
+
+  const run = async () => {
+    try {
+      loading.value = true
+      error.value = null
+
+      const response = await requestFn()
+      data.value = response.data
+
+      onSuccess?.(response.data)
+    } catch (err) {
+      error.value = err
+      onError?.(err)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  onLoad(() => {
+    if (immediate) run()
+  })
+
+  return {
+    loading: readonly(loading),
+    error: readonly(error),
+    data: readonly(data),
+    run,
+  }
+}
+```
+
+### 分页 Hook
+
+```typescript
+// src/hooks/usePagination.ts
+
+export const usePagination = <T>(
+  requestFn: (params: {
+    page: number
+    size: number
+  }) => Promise<IResData<{ list: T[]; total: number }>>,
+  options: {
+    pageSize?: number
+    immediate?: boolean
+  } = {},
+) => {
+  const { pageSize = 10, immediate = true } = options
+
+  const loading = ref(false)
+  const refreshing = ref(false)
+  const loadingMore = ref(false)
+  const finished = ref(false)
+  const error = ref<any>(null)
+
+  const page = ref(1)
+  const list = ref<T[]>([])
+  const total = ref(0)
+
+  const loadData = async (reset = false) => {
+    if (loading.value || (loadingMore.value && !reset)) return
+
+    try {
+      if (reset) {
+        refreshing.value = true
+        page.value = 1
+        finished.value = false
+      } else {
+        loadingMore.value = true
+      }
+
+      loading.value = true
+      error.value = null
+
+      const response = await requestFn({
+        page: page.value,
+        size: pageSize,
+      })
+
+      const { list: newList, total: newTotal } = response.data
+
+      if (reset) {
+        list.value = newList
+      } else {
+        list.value.push(...newList)
+      }
+
+      total.value = newTotal
+
+      // 检查是否还有更多数据
+      if (list.value.length >= newTotal || newList.length < pageSize) {
+        finished.value = true
+      } else {
+        page.value++
+      }
+    } catch (err) {
+      error.value = err
+    } finally {
+      loading.value = false
+      refreshing.value = false
+      loadingMore.value = false
+    }
+  }
+
+  // 刷新
+  const refresh = () => loadData(true)
+
+  // 加载更多
+  const loadMore = () => {
+    if (!finished.value) {
+      loadData(false)
+    }
+  }
+
+  onLoad(() => {
+    if (immediate) refresh()
+  })
+
+  // 下拉刷新
+  onPullDownRefresh(() => {
+    refresh().finally(() => {
+      uni.stopPullDownRefresh()
+    })
+  })
+
+  // 触底加载更多
+  onReachBottom(() => {
+    loadMore()
+  })
+
+  return {
+    loading: readonly(loading),
+    refreshing: readonly(refreshing),
+    loadingMore: readonly(loadingMore),
+    finished: readonly(finished),
+    error: readonly(error),
+    list: readonly(list),
+    total: readonly(total),
+    refresh,
+    loadMore,
+  }
+}
+```
+
+### 表单 Hook
+
+```typescript
+// src/hooks/useForm.ts
+
+export const useForm = <T extends Record<string, any>>(
+  initialValues: T,
+  rules?: Record<keyof T, any[]>,
+) => {
+  const formData = reactive<T>({ ...initialValues })
+  const errors = ref<Partial<Record<keyof T, string>>>({})
+  const loading = ref(false)
+
+  // 重置表单
+  const reset = () => {
+    Object.assign(formData, initialValues)
+    errors.value = {}
+  }
+
+  // 验证单个字段
+  const validateField = (field: keyof T): boolean => {
+    const fieldRules = rules?.[field] || []
+    const value = formData[field]
+
+    for (const rule of fieldRules) {
+      if (rule.required && (!value || value === '')) {
+        errors.value[field] = rule.message || `${String(field)} 不能为空`
+        return false
+      }
+
+      if (rule.min && value.length < rule.min) {
+        errors.value[field] = rule.message || `${String(field)} 长度不能少于 ${rule.min} 位`
+        return false
+      }
+
+      if (rule.max && value.length > rule.max) {
+        errors.value[field] = rule.message || `${String(field)} 长度不能超过 ${rule.max} 位`
+        return false
+      }
+
+      if (rule.pattern && !rule.pattern.test(value)) {
+        errors.value[field] = rule.message || `${String(field)} 格式不正确`
+        return false
+      }
+    }
+
+    delete errors.value[field]
+    return true
+  }
+
+  // 验证整个表单
+  const validate = (): boolean => {
+    if (!rules) return true
+
+    let isValid = true
+    for (const field in rules) {
+      if (!validateField(field)) {
+        isValid = false
+      }
+    }
+    return isValid
+  }
+
+  // 提交表单
+  const submit = async (submitFn: (data: T) => Promise<any>) => {
+    if (!validate()) {
+      return false
+    }
+
+    try {
+      loading.value = true
+      await submitFn(toRaw(formData))
+      return true
+    } catch (error) {
+      console.error('Form submit error:', error)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return {
+    formData,
+    errors: readonly(errors),
+    loading: readonly(loading),
+    reset,
+    validate,
+    validateField,
+    submit,
+  }
+}
+```
+
+### 本地存储 Hook
+
+```typescript
+// src/hooks/useStorage.ts
+
+export const useStorage = <T>(
+  key: string,
+  defaultValue: T,
+): [Ref<T>, (value: T) => void, () => void] => {
+  const storedValue = getStorage<T>(key, defaultValue)
+  const state = ref<T>(storedValue) as Ref<T>
+
+  const setValue = (value: T) => {
+    state.value = value
+    setStorage(key, value)
+  }
+
+  const removeValue = () => {
+    state.value = defaultValue
+    removeStorage(key)
+  }
+
+  // 监听其他页面的存储变化
+  const handleStorageChange = (e: any) => {
+    if (e.key === key) {
+      state.value = e.newValue ? JSON.parse(e.newValue) : defaultValue
+    }
+  }
+
+  // #ifdef H5
+  onMounted(() => {
+    window.addEventListener('storage', handleStorageChange)
+  })
+
+  onUnmounted(() => {
+    window.removeEventListener('storage', handleStorageChange)
+  })
+  // #endif
+
+  return [state, setValue, removeValue]
+}
+```
+
+### 倒计时 Hook
+
+```typescript
+// src/hooks/useCountdown.ts
+
+export const useCountdown = (
+  initialTime: number,
+  options: {
+    interval?: number
+    onEnd?: () => void
+  } = {},
+) => {
+  const { interval = 1000, onEnd } = options
+
+  const time = ref(initialTime)
+  const isActive = ref(false)
+  const timer = ref<NodeJS.Timeout | null>(null)
+
+  const start = () => {
+    if (isActive.value) return
+
+    isActive.value = true
+    timer.value = setInterval(() => {
+      time.value--
+
+      if (time.value <= 0) {
+        stop()
+        onEnd?.()
+      }
+    }, interval)
+  }
+
+  const stop = () => {
+    isActive.value = false
+    if (timer.value) {
+      clearInterval(timer.value)
+      timer.value = null
+    }
+  }
+
+  const reset = (newTime?: number) => {
+    stop()
+    time.value = newTime ?? initialTime
+  }
+
+  onUnmounted(stop)
+
+  return {
+    time: readonly(time),
+    isActive: readonly(isActive),
+    start,
+    stop,
+    reset,
+  }
+}
+```
+
+## 最佳实践
+
+### 函数命名规范
+
+```typescript
+// ✅ 好的命名
+export const formatPhoneNumber = (phone: string) => {
+  /* ... */
+}
+export const validateEmail = (email: string) => {
+  /* ... */
+}
+export const useUserData = () => {
+  /* ... */
+}
+
+// ❌ 避免的命名
+export const format = (data: any) => {
+  /* ... */
+}
+export const check = (value: any) => {
+  /* ... */
+}
+export const useData = () => {
+  /* ... */
+}
+```
+
+### 类型安全
+
+```typescript
+// ✅ 使用泛型确保类型安全
+export const createApiHook = <T, P = any>(apiFunction: (params: P) => Promise<IResData<T>>) => {
+  return (params: P) => useRequest(() => apiFunction(params))
+}
+
+// ✅ 为复杂参数定义接口
+interface PaginationOptions {
+  pageSize?: number
+  immediate?: boolean
+  onSuccess?: (data: any) => void
+  onError?: (error: any) => void
+}
+```
+
+### 错误处理
+
+```typescript
+// ✅ 统一的错误处理
+export const safeExecute = async <T>(
+  fn: () => Promise<T>,
+  fallback?: T,
+): Promise<T | undefined> => {
+  try {
+    return await fn()
+  } catch (error) {
+    console.error('Safe execute error:', error)
+    return fallback
+  }
+}
+```
+
+### 测试友好
+
+```typescript
+// ✅ 便于测试的纯函数
+export const calculateTotal = (items: { price: number; quantity: number }[]): number => {
+  return items.reduce((total, item) => total + item.price * item.quantity, 0)
+}
+
+// ✅ 可注入依赖
+export const createStorageHook = (storageInstance = storage) => {
+  return <T>(key: string, defaultValue: T) => {
+    // 使用注入的 storage 实例
+  }
+}
+```
+
+description:
+globs:
+alwaysApply: false
+
+---

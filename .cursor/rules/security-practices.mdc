@@ -1,0 +1,264 @@
+# 安全最佳实践规则
+
+## 数据安全
+
+### 敏感信息处理
+
+```typescript
+// ✅ 正确的密码处理
+const hashPassword = (password: string): string => {
+  // 使用安全的哈希算法
+  return bcrypt.hashSync(password, 10)
+}
+
+// ❌ 避免明文存储
+// localStorage.setItem('password', password)
+
+// ✅ 正确的token处理
+const storeToken = (token: string) => {
+  // 设置过期时间
+  const expiryTime = Date.now() + 7 * 24 * 60 * 60 * 1000 // 7天
+  uni.setStorageSync('auth_token', {
+    token,
+    expiry: expiryTime,
+  })
+}
+```
+
+### 输入验证
+
+```typescript
+// 严格的输入验证
+export const validateInput = (input: string): boolean => {
+  // 防止XSS攻击
+  const xssPattern = /<script|javascript:|on\w+=/i
+  if (xssPattern.test(input)) {
+    return false
+  }
+
+  // 防止SQL注入
+  const sqlPattern = /(\b(select|insert|update|delete|drop|create|alter|exec|union|script)\b)/i
+  if (sqlPattern.test(input)) {
+    return false
+  }
+
+  return true
+}
+
+// 数据清理
+export const sanitizeInput = (input: string): string => {
+  return input
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .trim()
+}
+```
+
+## 网络安全
+
+### HTTPS 强制使用
+
+```typescript
+// 确保使用HTTPS
+const baseURL = import.meta.env.VITE_SERVER_BASEURL
+if (!baseURL.startsWith('https://') && import.meta.env.PROD) {
+  console.error('生产环境必须使用HTTPS')
+}
+
+// 请求拦截器中添加安全头
+const secureHeaders = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+}
+```
+
+### API 安全
+
+```typescript
+// Token 自动刷新
+const refreshToken = async (): Promise<string> => {
+  try {
+    const refreshToken = getStorage('refresh_token')
+    const response = await http.post('/auth/refresh', { refreshToken })
+
+    if (response.data.token) {
+      setStorage('auth_token', response.data.token)
+      return response.data.token
+    }
+  } catch (error) {
+    // 刷新失败，跳转登录
+    clearAuthData()
+    uni.reLaunch({ url: '/pages/login/index' })
+  }
+}
+```
+
+## 权限控制
+
+### 路由权限验证
+
+```typescript
+// 权限检查函数
+export const hasPermission = (userPermissions: string[], requiredPermission: string): boolean => {
+  return userPermissions.includes(requiredPermission) || userPermissions.includes('admin')
+}
+
+// 页面级权限控制
+const checkPagePermission = (path: string): boolean => {
+  const userStore = useUserStore()
+  const pagePermissions = getPagePermissions(path)
+
+  if (!pagePermissions.length) return true
+
+  return pagePermissions.some((permission) => hasPermission(userStore.permissions, permission))
+}
+```
+
+## 数据加密
+
+### 本地存储加密
+
+```typescript
+import CryptoJS from 'crypto-js'
+
+const SECRET_KEY = 'your-secret-key' // 应该从环境变量获取
+
+export const encryptData = (data: any): string => {
+  const jsonString = JSON.stringify(data)
+  return CryptoJS.AES.encrypt(jsonString, SECRET_KEY).toString()
+}
+
+export const decryptData = <T>(encryptedData: string): T | null => {
+  try {
+    const bytes = CryptoJS.AES.decrypt(encryptedData, SECRET_KEY)
+    const decryptedString = bytes.toString(CryptoJS.enc.Utf8)
+    return JSON.parse(decryptedString)
+  } catch (error) {
+    console.error('解密失败:', error)
+    return null
+  }
+}
+
+// 安全的存储工具
+export const secureStorage = {
+  set: <T>(key: string, value: T): void => {
+    const encrypted = encryptData(value)
+    uni.setStorageSync(key, encrypted)
+  },
+
+  get: <T>(key: string): T | null => {
+    const encrypted = uni.getStorageSync(key)
+    if (!encrypted) return null
+    return decryptData<T>(encrypted)
+  },
+}
+```
+
+## 错误处理安全
+
+### 安全的错误信息
+
+```typescript
+// 避免暴露敏感信息
+export const handleApiError = (error: any): string => {
+  if (import.meta.env.DEV) {
+    // 开发环境显示详细错误
+    return error.message || '请求失败'
+  }
+
+  // 生产环境使用通用错误信息
+  const statusCode = error.statusCode || error.status
+  switch (statusCode) {
+    case 401:
+      return '登录已过期，请重新登录'
+    case 403:
+      return '没有权限访问此资源'
+    case 404:
+      return '请求的资源不存在'
+    case 500:
+      return '服务器内部错误'
+    default:
+      return '操作失败，请稍后重试'
+  }
+}
+```
+
+## 小程序安全
+
+### 小程序特定安全措施
+
+```typescript
+// #ifdef MP-WEIXIN
+// 验证小程序环境
+const validateMiniProgramEnv = (): boolean => {
+  return typeof wx !== 'undefined' && wx.env
+}
+
+// 小程序码验证
+const validateQRCode = (scene: string): boolean => {
+  // 验证场景值的合法性
+  const validScenes = ['1001', '1007', '1008'] // 允许的场景值
+  return validScenes.includes(scene)
+}
+// #endif
+```
+
+## 配置安全
+
+### 环境变量安全
+
+```bash
+# .env.production
+VITE_SERVER_BASEURL=https://api.yourdomain.com
+VITE_APP_SECRET=your-app-secret
+VITE_ENCRYPT_KEY=your-encrypt-key
+
+# 敏感配置不要提交到版本控制
+# .env.local (gitignore 中忽略)
+VITE_SECRET_KEY=very-secret-key
+```
+
+### 构建时安全检查
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  build: {
+    terserOptions: {
+      compress: {
+        // 移除 console 和 debugger
+        drop_console: env.VITE_DELETE_CONSOLE === 'true',
+        drop_debugger: true,
+        // 移除无用代码
+        dead_code: true,
+      },
+    },
+  },
+})
+```
+
+## 安全检查清单
+
+### 开发阶段
+
+- [ ] 所有用户输入都经过验证和清理
+- [ ] 敏感数据使用加密存储
+- [ ] API 请求使用 HTTPS
+- [ ] 实现适当的错误处理
+- [ ] 权限验证覆盖所有敏感操作
+
+### 部署阶段
+
+- [ ] 移除开发环境的调试代码
+- [ ] 检查环境变量配置
+- [ ] 验证 HTTPS 证书有效性
+- [ ] 确认安全头配置正确
+- [ ] 进行安全扫描测试
+      description:
+      globs:
+      alwaysApply: false
+
+---

@@ -1,0 +1,88 @@
+---
+alwaysApply: true
+description: "Unibest项目主要开发指南 - 整合所有开发规范和最佳实践"
+---
+
+# Unibest 项目开发指南 (主规则)
+
+## 概述
+
+这是 Unibest 项目的主要开发指南，整合了所有开发规范、架构设计、最佳实践等规则。
+
+## 核心开发规范
+
+### 基本原则
+- 始终优先选择简单方案
+- 尽可能避免代码重复
+- 谨慎修改代码，仅针对明确需求进行更改
+- 保持代码稳定性：确保修改不会影响其他功能的正常运行
+
+## 详细规则引用
+
+### 1. 项目架构与标准
+参考详细架构规范：[unibest-architecture.mdc](mdc:frontend/.cursor/rules/unibest-architecture.mdc)
+参考开发标准：[development-standards.mdc](mdc:frontend/.cursor/rules/development-standards.mdc)
+
+### 2. 文件组织与项目结构
+参考文件组织规范：[file-organization.mdc](mdc:frontend/.cursor/rules/file-organization.mdc)
+
+### 3. 组件开发
+参考组件开发规范：[component-development.mdc](mdc:frontend/.cursor/rules/component-development.mdc)
+参考UI组件规范：[ui-components.mdc](mdc:frontend/.cursor/rules/ui-components.mdc)
+
+### 4. TypeScript 类型系统
+参考TypeScript类型规范：[typescript-types.mdc](mdc:frontend/.cursor/rules/typescript-types.mdc)
+
+### 5. 工具函数与Hooks
+参考工具函数和Hooks规范：[utils-hooks.mdc](mdc:frontend/.cursor/rules/utils-hooks.mdc)
+
+### 6. 状态管理
+参考状态管理规范：[state-management.mdc](mdc:frontend/.cursor/rules/state-management.mdc)
+
+### 7. 网络请求
+参考网络请求规范：[network-requests.mdc](mdc:frontend/.cursor/rules/network-requests.mdc)
+
+### 8. 路由与导航
+参考路由导航规范：[routing-navigation.mdc](mdc:frontend/.cursor/rules/routing-navigation.mdc)
+
+### 9. 样式与CSS
+参考样式CSS规范：[styling-css.mdc](mdc:frontend/.cursor/rules/styling-css.mdc)
+
+### 10. 国际化
+参考国际化规范：[internationalization.mdc](mdc:frontend/.cursor/rules/internationalization.mdc)
+
+### 11. 性能优化
+参考性能优化规范：[performance-optimization.mdc](mdc:frontend/.cursor/rules/performance-optimization.mdc)
+
+### 12. 平台兼容性
+参考平台兼容性规范：[platform-compatibility.mdc](mdc:frontend/.cursor/rules/platform-compatibility.mdc)
+
+### 13. 安全实践
+参考安全实践规范：[security-practices.mdc](mdc:frontend/.cursor/rules/security-practices.mdc)
+
+### 14. 调试与测试
+参考调试测试规范：[debugging-testing.mdc](mdc:frontend/.cursor/rules/debugging-testing.mdc)
+
+### 15. 构建与部署
+参考构建部署规范：[build-deployment.mdc](mdc:frontend/.cursor/rules/build-deployment.mdc)
+
+## 开发优先级原则
+
+1. **安全性优先**: 始终遵循安全实践
+2. **性能优先**: 考虑性能影响
+3. **兼容性优先**: 确保跨平台兼容
+4. **可维护性优先**: 保持代码整洁和可读性
+5. **用户体验优先**: 提供良好的交互体验
+
+## 重要提醒
+
+- **数据库事务**: 在多数据表操作时，需要保证事务一致性，要么都失败要么都成功
+- **环境区分**: 明确区分开发环境（dev）、测试环境（test）和生产环境（prod）
+- **文件大小控制**: 文件代码超过 200-300行 时需重构封装
+- **禁止覆盖 .env 文件**: 修改前需确认并征得同意
+
+## 使用说明
+
+此主规则文件已设置为自动应用（alwaysApply: true），在每次开发时会自动生效。所有具体的开发规范都通过引用对应的专项规则文件来获取详细信息。
+
+当您需要查看特定领域的详细规范时，可以直接查看对应的专项规则文件。

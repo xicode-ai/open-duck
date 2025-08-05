@@ -1,0 +1,95 @@
+# 组件开发规则
+
+## 组件目录结构
+
+- **全局组件**: 放在 [src/components/](mdc:src/components/) 目录，自动注册
+- **页面组件**: 放在对应页面目录下的 components 子目录
+- **业务组件**: 按功能模块分类组织
+
+## 组件命名规范
+
+- 全局组件使用 PascalCase 命名
+- 文件名与组件名保持一致
+- 使用描述性名称，避免缩写
+
+## 组件结构标准
+
+````vue
+<template>
+  <!-- 模板内容 -->
+</template>
+
+<script setup lang="ts">
+// 引入依赖
+// 类型定义
+// Props 定义
+// Emits 定义
+// 组合式函数
+// 响应式数据
+// 计算属性
+// 方法定义
+// 生命周期
+</script>
+
+<style lang="scss" scoped>
+/* 组件样式 */
+</style>
+
+## Props 和 Emits 规范 - 使用 TypeScript 接口定义 Props 类型 - 为 Props 提供合理的默认值 - 明确定义
+Emits 事件类型 - 添加必要的注释说明 ## 响应式数据管理 - 优先使用 `ref()` 和 `reactive()` -
+避免过度嵌套的响应式对象 - 合理使用 `computed()` 处理衍生数据 - 正确使用 `watch()` 和
+`watchEffect()` ## 组件通信 - 父子组件：Props + Emits - 跨层级组件：provide/inject - 全局状态：Pinia
+store - 事件总线：uni.$emit / uni.$on ## 样式处理 - 优先使用 UnoCSS 原子类 - 组件特有样式使用 scoped
+CSS - 避免全局样式污染 - 支持主题切换和响应式设计 ## 平台兼容性 - 使用条件编译处理平台差异 -
+小程序端注意组件限制 - H5 端可使用更多 Web API - APP 端考虑原生能力集成 ## 组件示例模板 ```vue
+<template>
+  <view class="custom-component">
+    <slot name="header" />
+    <view class="content">
+      {{ displayText }}
+    </view>
+    <slot />
+  </view>
+</template>
+
+<script setup lang="ts">
+interface Props {
+  text: string
+  disabled?: boolean
+}
+
+interface Emits {
+  (e: 'click', value: string): void
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  disabled: false,
+})
+
+const emit = defineEmits<Emits>()
+
+const displayText = computed(() => (props.disabled ? '禁用状态' : props.text))
+
+const handleClick = () => {
+  if (!props.disabled) {
+    emit('click', props.text)
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+.custom-component {
+  @apply p-4 bg-white rounded;
+
+  .content {
+    @apply text-gray-700;
+  }
+}
+</style>
+````
+
+description:
+globs:
+alwaysApply: false
+
+---

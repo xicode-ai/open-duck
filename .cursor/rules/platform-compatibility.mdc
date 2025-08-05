@@ -1,0 +1,357 @@
+# 平台兼容性规则
+
+## 支持的平台
+
+基于 uni-app 跨平台框架，支持以下平台：
+
+- **H5**: 浏览器端应用
+- **小程序**: 微信、支付宝、百度、字节跳动、QQ、快手等
+- **APP**: iOS、Android 原生应用
+- **快应用**: 华为、联盟等快应用平台
+
+## 条件编译
+
+使用条件编译处理平台差异：
+
+### 平台判断
+
+```javascript
+// #ifdef H5
+// H5 端代码
+// #endif
+
+// #ifdef MP-WEIXIN
+// 微信小程序代码
+// #endif
+
+// #ifdef MP-ALIPAY
+// 支付宝小程序代码
+// #endif
+
+// #ifdef APP-PLUS
+// APP 端代码
+// #endif
+
+// #ifndef H5
+// 非 H5 端代码
+// #endif
+```
+
+### Vue 模板中的条件编译
+
+```vue
+<template>
+  <!-- #ifdef H5 -->
+  <div class="h5-specific">H5 专用内容</div>
+  <!-- #endif -->
+
+  <!-- #ifdef MP-WEIXIN -->
+  <view class="mp-specific">小程序专用内容</view>
+  <!-- #endif -->
+</template>
+```
+
+### 样式中的条件编译
+
+```scss
+/* #ifdef H5 */
+.h5-style {
+  backdrop-filter: blur(10px);
+  position: fixed;
+}
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+.mp-style {
+  // 小程序不支持某些 CSS 属性
+  background: rgba(0, 0, 0, 0.5);
+}
+/* #endif */
+```
+
+## API 兼容性处理
+
+### 网络请求
+
+```typescript
+// H5 端可以使用更多的网络配置
+// #ifdef H5
+const requestConfig = {
+  withCredentials: true,
+  responseType: 'json',
+}
+// #endif
+
+// #ifdef MP
+const requestConfig = {
+  // 小程序端限制
+}
+// #endif
+```
+
+### 存储
+
+```typescript
+// 统一的存储接口
+const storage = {
+  // #ifdef H5
+  set: (key: string, value: any) => {
+    localStorage.setItem(key, JSON.stringify(value))
+  },
+  get: (key: string) => {
+    const value = localStorage.getItem(key)
+    return value ? JSON.parse(value) : null
+  }
+  // #endif
+
+  // #ifdef MP || APP-PLUS
+  set: uni.setStorageSync,
+  get: uni.getStorageSync
+  // #endif
+}
+```
+
+## 组件差异处理
+
+### 导航栏
+
+```vue
+<template>
+  <!-- H5 端自定义导航栏 -->
+  <!-- #ifdef H5 -->
+  <div class="custom-navbar">
+    <div class="navbar-content">{{ title }}</div>
+  </div>
+  <!-- #endif -->
+
+  <!-- 小程序/APP 使用原生导航栏 -->
+  <!-- #ifndef H5 -->
+  <!-- 通过 pages.json 配置 -->
+  <!-- #endif -->
+</template>
+```
+
+### 滚动容器
+
+```vue
+<template>
+  <!-- H5 端 -->
+  <!-- #ifdef H5 -->
+  <div class="scroll-container">
+    <!-- 内容 -->
+  </div>
+  <!-- #endif -->
+
+  <!-- 小程序/APP 端 -->
+  <!-- #ifndef H5 -->
+  <scroll-view scroll-y class="scroll-container">
+    <!-- 内容 -->
+  </scroll-view>
+  <!-- #endif -->
+</template>
+```
+
+## 样式兼容性
+
+### 单位处理
+
+- **H5**: 使用 rem、px、vh、vw
+- **小程序**: 使用 rpx (响应式像素)
+- **APP**: 支持 upx (uni-app 像素单位)
+
+### CSS 属性兼容
+
+```scss
+.compatible-style {
+  // 通用属性
+  display: flex;
+  justify-content: center;
+
+  // H5 专用
+  /* #ifdef H5 */
+  backdrop-filter: blur(10px);
+  position: sticky;
+  /* #endif */
+
+  // 小程序专用
+  /* #ifdef MP */
+  // 小程序不支持某些高级 CSS
+  background: rgba(255, 255, 255, 0.9);
+  /* #endif */
+}
+```
+
+## 功能兼容性
+
+### 文件操作
+
+```typescript
+// 图片选择
+const chooseImage = () => {
+  // #ifdef H5
+  // H5 端使用 input[type="file"]
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.click()
+  // #endif
+
+  // #ifdef MP || APP-PLUS
+  uni.chooseImage({
+    count: 1,
+    success: (res) => {
+      // 处理选择的图片
+    },
+  })
+  // #endif
+}
+```
+
+### 支付功能
+
+```typescript
+// 支付接口兼容
+const pay = (orderInfo: any) => {
+  // #ifdef MP-WEIXIN
+  uni.requestPayment({
+    provider: 'wxpay',
+    ...orderInfo,
+    success: () => {
+      // 支付成功
+    },
+  })
+  // #endif
+
+  // #ifdef H5
+  // H5 端跳转到支付页面或使用 JS SDK
+  window.location.href = `/pay?order=${orderInfo.orderId}`
+  // #endif
+
+  // #ifdef APP-PLUS
+  uni.requestPayment({
+    provider: 'alipay', // 或 wxpay
+    ...orderInfo,
+  })
+  // #endif
+}
+```
+
+## 生命周期差异
+
+### 应用生命周期
+
+```typescript
+// App.vue
+export default {
+  // #ifdef MP
+  onLaunch() {
+    // 小程序启动
+  },
+  onShow() {
+    // 小程序显示
+  },
+  onHide() {
+    // 小程序隐藏
+  }
+  // #endif
+
+  // #ifdef H5
+  mounted() {
+    // H5 端应用挂载
+  }
+  // #endif
+}
+```
+
+## 权限处理
+
+### 位置权限
+
+```typescript
+const getLocation = () => {
+  // #ifdef MP-WEIXIN
+  uni.getSetting({
+    success: (res) => {
+      if (!res.authSetting['scope.userLocation']) {
+        uni.authorize({
+          scope: 'scope.userLocation',
+          success: () => {
+            // 获取位置
+          },
+        })
+      }
+    },
+  })
+  // #endif
+
+  // #ifdef H5
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((position) => {
+      // 获取位置成功
+    })
+  }
+  // #endif
+}
+```
+
+## 构建配置
+
+### Vite 配置差异
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  plugins: [
+    // H5 端特有插件
+    process.env.UNI_PLATFORM === 'h5' && {
+      name: 'html-transform',
+      transformIndexHtml(html) {
+        return html.replace('%BUILD_DATE%', dayjs().format('YYYY-MM-DD HH:mm:ss'))
+      },
+    },
+  ],
+
+  build: {
+    // Windows 系统对微信小程序的特殊处理
+    watch: process.platform === 'win32' ? { exclude: ['node_modules/**', '/__uno.css'] } : null,
+  },
+})
+```
+
+## 调试兼容性
+
+### 控制台调试
+
+```typescript
+// #ifdef H5
+console.log('H5 端调试信息')
+// #endif
+
+// #ifdef MP-WEIXIN
+console.log('微信小程序调试')
+// 小程序端可以使用 vConsole
+// #endif
+
+// #ifdef APP-PLUS
+console.log('APP 端调试')
+// #endif
+```
+
+## 性能优化
+
+### 图片资源
+
+- **小程序**: 图片资源需要上传到 CDN
+- **H5**: 可以使用本地图片和 CDN
+- **APP**: 可以使用本地图片
+
+### 包大小控制
+
+- **小程序**: 主包不超过 2MB，总包不超过 20MB
+- **H5**: 按需加载，代码分割
+- **APP**: 资源本地化，减少网络请求
+  description:
+  globs:
+  alwaysApply: false
+
+---

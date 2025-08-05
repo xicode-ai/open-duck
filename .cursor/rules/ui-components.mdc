@@ -1,0 +1,150 @@
+# UI 组件库使用规则
+
+## 支持的UI组件库
+
+基于 [package.json](mdc:package.json) 中的依赖配置：
+
+### 主要组件库
+
+- **@dcloudio/uni-ui**: uni-app 官方组件库
+- **@climblee/uv-ui**: 跨端组件库
+- **wot-design-uni**: 微信风格组件库
+
+### 组件自动注册
+
+在 [src/pages.json](mdc:src/pages.json) 中配置 easycom 自动注册：
+
+```json
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue",
+      "^uv-(.*)": "@climblee/uv-ui/components/uv-$1/uv-$1.vue",
+      "^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue"
+    }
+  }
+}
+```
+
+## uni-ui 组件使用
+
+### 基础组件
+
+```vue
+<template>
+  <!-- 按钮 -->
+  <uni-button type="primary" @click="handleClick">点击按钮</uni-button>
+
+  <!-- 输入框 -->
+  <uni-input v-model="inputValue" placeholder="请输入内容" />
+
+  <!-- 弹窗 -->
+  <uni-popup ref="popup" type="center">
+    <view class="popup-content">弹窗内容</view>
+  </uni-popup>
+
+  <!-- 列表 -->
+  <uni-list>
+    <uni-list-item
+      v-for="item in list"
+      :key="item.id"
+      :title="item.title"
+      :note="item.note"
+      @click="handleItemClick(item)"
+    />
+  </uni-list>
+</template>
+
+<script setup lang="ts">
+const popup = ref(null)
+
+const showPopup = () => {
+  popup.value?.open()
+}
+</script>
+```
+
+## uv-ui 组件使用
+
+### 高级组件
+
+```vue
+<template>
+  <!-- 表单 -->
+  <uv-form ref="formRef" :model="formData" :rules="rules">
+    <uv-form-item label="用户名" prop="username">
+      <uv-input v-model="formData.username" placeholder="请输入用户名" />
+    </uv-form-item>
+  </uv-form>
+
+  <!-- 表格 -->
+  <uv-table :columns="columns" :data="tableData" />
+
+  <!-- 图表 -->
+  <uv-charts type="line" :option="chartOption" />
+</template>
+```
+
+## wot-design-uni 组件
+
+### 移动端优化组件
+
+```vue
+<template>
+  <!-- 选择器 -->
+  <wd-picker v-model="pickerValue" :columns="pickerData" />
+
+  <!-- 日期选择 -->
+  <wd-datetime-picker v-model="dateValue" type="date" />
+
+  <!-- 上拉加载 -->
+  <wd-pull-refresh @refresh="onRefresh">
+    <wd-infinite-load @load="onLoad">
+      <view v-for="item in list" :key="item.id">
+        {{ item.title }}
+      </view>
+    </wd-infinite-load>
+  </wd-pull-refresh>
+</template>
+```
+
+## 组件选择原则
+
+- **基础功能**: 优先使用 uni-ui
+- **复杂交互**: 使用 uv-ui 或 wot-design-uni
+- **平台兼容**: 确保组件支持目标平台
+- **性能考虑**: 避免过度使用大型组件
+
+## 自定义组件开发
+
+### 组件封装规范
+
+```vue
+<template>
+  <view class="custom-component">
+    <slot name="header" />
+    <view class="content">
+      <!-- 组件内容 -->
+    </view>
+    <slot />
+  </view>
+</template>
+
+<script setup lang="ts">
+interface Props {
+  title: string
+  type?: 'default' | 'primary'
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  type: 'default',
+})
+</script>
+```
+
+description:
+globs:
+alwaysApply: false
+
+---
